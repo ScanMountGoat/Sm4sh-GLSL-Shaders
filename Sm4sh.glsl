@@ -1,3 +1,5 @@
+import lib-env.glsl
+
 
 //: param auto mvp_matrix
 uniform mat4 mvpMatrix;
@@ -6,6 +8,9 @@ uniform mat4 mvpMatrix;
 //: param auto mvp_matrix
 uniform mat4 modelViewMatrix;
 
+/****************************************************/
+// NU_ Material Properties
+/****************************************************/
 // NU_ Material Properties
 uniform vec4 colorOffset;
 
@@ -41,13 +46,13 @@ uniform vec4 effColorGain = vec4(1);
 uniform vec4 zOffset = vec4(0);
 
 // NU_ material params
-//: param custom { "group": "Fresnel", "default": 0, "label": "NU_fresnelParams", "widget": "color" }
+//: param custom { "group": "Fresnel", "default": 0, "label": "NU_fresnelParams", "min": 0.0, "max": 10.0, "step": 0.1  }
 uniform vec4 fresnelParams;
 
-//: param custom { "group": "Specular", "default": 0, "label": "NU_specularParams", "widget": "color" }
+//: param custom { "group": "Specular", "default": 0, "label": "NU_specularParams", "min": 0.0, "max": 100.0, "step": 0.1  }
 uniform vec4 specularParams;
 
-//: param custom { "group": "Reflection", "default": 0, "label": "NU_reflectionParams", "widget": "color" }
+//: param custom { "group": "Reflection", "default": 0, "label": "NU_reflectionParams", "min": 0.0, "max": 100.0, "step": 0.1  }
 uniform vec4 reflectionParams;
 
 uniform vec4 fogParams = vec4(0);
@@ -58,6 +63,8 @@ uniform vec4 alphaBlendParams = vec4(0);
 uniform vec4 softLightingParams = vec4(0);
 uniform vec4 customSoftLightParams = vec4(0);
 uniform vec4 effUniverseParam = vec4(0);
+/****************************************************/
+
 
 /****************************************************/
 // TEXTURES
@@ -324,19 +331,19 @@ vec3 ReflectionPass(vec3 N, vec3 I, vec4 diffuseMap, float aoBlend, vec3 tintCol
 {
     vec3 reflectionPass = vec3(0);
 	// cubemap reflection
-	/*vec3 R = reflect(I, N);
+	vec3 R = reflect(I, N);
 	R.y *= -1.0;
-	vec3 stageCubeColor = texture(stagecube, R).rgb;
+	vec3 stageCubeColor = envSampleLOD(R, 0);
 
     // TODO: Cubemaps from model.nut currently just use the miiverse cubemap.
-	if (hasCube == 1)
-		reflectionPass += diffuseMap.aaa * stageCubeColor * tintColor * reflectionParams.x;
+	//if (hasCube == 1)
+	//	reflectionPass += diffuseMap.aaa * stageCubeColor * tintColor * reflectionParams.x;
 
     // TODO: Stage cubemaps currently just use the miiverse cubemap.
-    if (hasStage == 1)
+    //if (hasStage == 1)
        reflectionPass += reflectionColor.rgb * stageCubeColor.rgb * tintColor;
 
-	reflectionPass += SphereMapColor(normal.xyz) * reflectionColor.xyz * tintColor;
+	//reflectionPass += SphereMapColor(normal.xyz) * reflectionColor.xyz * tintColor;
 
     // It sort of conserves energy for low values.
     reflectionPass -= 0.5 * Luminance(diffuseMap.rgb);
@@ -349,7 +356,7 @@ vec3 ReflectionPass(vec3 N, vec3 I, vec4 diffuseMap, float aoBlend, vec3 tintCol
     if (useDifRefMask == 1)
         reflectionPass *= diffuseMap.a;
 
-    reflectionPass = pow(reflectionPass, vec3(gamma));*/
+    reflectionPass = pow(reflectionPass, vec3(gamma));
     return reflectionPass;
 }
 
@@ -575,6 +582,7 @@ vec3 RenderPasses(vec4 diffuseMap, vec3 N, vec3 I, vec3 tangent, vec3 bitangent)
     // The ambient occlusion calculations for diffuse are done separately.
     float ambientOcclusionBlend = AmbientOcclusionBlend(diffuseMap, aoMinGain, useDiffuseBlend,
         hasColorGainOffset);
+    ambientOcclusionBlend = 1;
     vec3 specularPass = SpecularPass(N, I, diffuseMap, ambientOcclusionBlend, specTintColor, tangent, bitangent);
     vec3 fresnelPass = FresnelPass(N, I, diffuseMap, ambientOcclusionBlend, fresTintColor);
 	vec3 reflectionPass = ReflectionPass(N, I, diffuseMap, ambientOcclusionBlend, reflTintColor);
@@ -598,33 +606,32 @@ vec3 RenderPasses(vec4 diffuseMap, vec3 N, vec3 I, vec3 tangent, vec3 bitangent)
 
 vec4 SmashShader(vec3 I, vec3 N, vec3 tangent, vec3 bitangent, vec4 vertexColor)
 {
-    vec4 resultingColor = vec4(0,0,0,1);
-
-    if (colorOverride == 1)
-    {
-        // Wireframe color.
-        return vec4(1);
-    }
+    vec4 resultingColor = vec4(1,0,0,1);
+    // if (colorOverride == 1)
+    // {
+    //     // Wireframe color.
+    //     return vec4(1);
+    // }
 
     // zOffset correction
     // TODO: Divide by far plane?
-    gl_FragDepth = gl_FragCoord.z - (zOffset.x / 1500) - zBufferOffset;
+    // gl_FragDepth = gl_FragCoord.z - (zOffset.x / 1500) - zBufferOffset;
 
     // Calculate diffuse map blending.
     vec4 diffuseMapTotal = DiffuseMapTotal();
 
     // TODO: Research how mii colors work.
-    diffuseMapTotal *= characterColor.rgba;
+    // diffuseMapTotal *= characterColor.rgba;
     // Material lighting done in SmashShader
     resultingColor.rgb = RenderPasses(diffuseMapTotal, N, I, tangent, bitangent);
 
     // TODO: Max vertex color value?
-    if (renderVertColor == 1 || hasFinalColorGain == 1)
-        resultingColor *= min(vertexColor, vec4(1));
+    // if (renderVertColor == 1 || hasFinalColorGain == 1)
+    //     resultingColor *= min(vertexColor, vec4(1));
 
     // Universe mats are weird...
-    if (hasUniverseParam != 1)
-        resultingColor.rgb *= effColorGain.rgb;
+    // if (hasUniverseParam != 1)
+    //     resultingColor.rgb *= effColorGain.rgb;
 
     // Adjust the alpha.
     // TODO: Is this affected by multiple diffuse maps?
@@ -645,9 +652,9 @@ vec4 SmashShader(vec3 I, vec3 N, vec3 tangent, vec3 bitangent, vec4 vertexColor)
 
 
 vec4 shade(V2F inputs) {
-    vec4 result = vec4(0);
+    vec4 result = vec4(1);
     vec3 N = inputs.normal;
     vec3 I = normalize(vec3(0,0,-1) * mat3(mvpMatrix));
-    result = SmashShader(I, N, inputs.tangent, inputs.bitangent, inputs.color[0]);
+    result.rgb = SmashShader(I, N, inputs.tangent, inputs.bitangent, vec4(1)).rgb;
     return result;
 }
