@@ -194,7 +194,7 @@ uniform vec3 stageFogColor = vec3(0);
 // Character Lighting
 uniform vec3 difLightColor= vec3(1);
 uniform vec3 ambLightColor= vec3(0);
-uniform vec3 difLightDirection= vec3(0);
+uniform vec3 difLightDirection= vec3(0,1,0);
 
 uniform vec3 difLight2Color= vec3(0);
 uniform vec3 ambLight2Color= vec3(0);
@@ -657,4 +657,8 @@ vec4 shade(V2F inputs) {
     vec3 I = normalize(vec3(0,0,-1) * mat3(mvpMatrix));
     result.rgb = SmashShader(I, N, inputs.tangent, inputs.bitangent, vec4(1)).rgb;
     return result;
+}
+
+void shadeShadow(V2F inputs)
+{
 }
