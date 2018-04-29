@@ -338,8 +338,6 @@ vec3 ReflectionPass(vec3 N, vec3 I, vec4 diffuseMap, float aoBlend, vec3 tintCol
 
     reflectionPass += reflectionColor.rgb * stageCubeColor.rgb * tintColor;
 
-	//reflectionPass += SphereMapColor(normal.xyz) * reflectionColor.xyz * tintColor;
-
     // It sort of conserves energy for low values.
     reflectionPass -= 0.5 * Luminance(diffuseMap.rgb);
     reflectionPass = max(vec3(0), reflectionPass);
@@ -415,9 +413,6 @@ vec3 SpecularPass(vec3 N, vec3 I, vec4 diffuseMap, float aoBlend, vec3 tintColor
 
 vec3 CharacterDiffuseLighting(float halfLambert)
 {
-	// vec3 ambient = ambLightColor * ambientIntensity;
-	// vec3 diffuse = difLightColor * diffuseIntensity;
-	// return mix(ambient, diffuse, halfLambert);
 	// Use more realistic lighting for Substance.
 	vec3 I = normalize(vec3(0,0,-1) * mat3(mvpMatrix));
 	vec3 R = reflect(I, N);
@@ -431,7 +426,7 @@ vec3 DiffuseAOBlend()
 	float maxAOBlendValue = 1.25;
 	float aoMap = 1;
 	if (hasNrm == 1)
-		aoMap = pow(texture(normalMap, texCoord).a, gamma);
+		aoMap = pow(texture(ao, texCoord).r, gamma);
 	vec3 aoBlend = vec3(aoMap);
 	return min((aoBlend + aoMinGain.rgb), vec3(maxAOBlendValue));
 }
@@ -440,9 +435,7 @@ float AmbientOcclusionBlend(vec4 diffuseMap, vec4 aoMinGain, int useDiffuseBlend
 {
 	// Ambient occlusion uses sRGB gamma.
 	// Not all materials have an ambient occlusion map.
-	float aoMap = pow(texture(normalMap, texCoord).a, gamma);
-	if (hasNrm != 1)
-		aoMap = 1;
+	float aoMap = pow(texture(ao, texCoord).r, gamma);
 
 	// The diffuse map for colorGain/Offset materials does a lot of things.
 	if (hasColorGainOffset == 1 || useDiffuseBlend == 1)
@@ -505,9 +498,10 @@ vec3 RenderPasses(vec4 diffuseMap, vec3 N, vec3 I)
     vec3 reflTintColor = TintColor(diffusePass, reflectionColor.a);
 
     // The ambient occlusion calculations for diffuse are done separately.
-    float ambientOcclusionBlend = AmbientOcclusionBlend(diffuseMap, aoMinGain, useDiffuseBlend,
-    hasColorGainOffset);
-    ambientOcclusionBlend = 1;
+    float ambientOcclusionBlend = AmbientOcclusionBlend(diffuseMap, aoMinGain,
+                                                        useDiffuseBlend,
+                                                        hasColorGainOffset);
+
     vec3 specularPass = SpecularPass(N, I, diffuseMap, ambientOcclusionBlend, specTintColor);
     vec3 fresnelPass = FresnelPass(N, I, diffuseMap, ambientOcclusionBlend, fresTintColor);
     vec3 reflectionPass = ReflectionPass(N, I, diffuseMap, ambientOcclusionBlend, reflTintColor);
@@ -535,6 +529,7 @@ vec4 shade(V2F inputs)
 {
     vec4 result = vec4(1);
     N = inputs.normal;
+    texCoord = inputs.tex_coord;
     I = normalize(vec3(0,0,-1) * mat3(mvpMatrix));
     result.rgb = SmashShader(I, N, inputs.tangent, inputs.bitangent, vec4(1)).rgb;
     return result;
